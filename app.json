@@ -1,0 +1,57 @@
+{
+  "name": "my-app",
+  "image": "gcr.io/pe-intercorpretail-cld-01/micro-service-integ-route:1.5.0",
+  "labels": {
+    "tier": "backend",
+    "domain": "order",
+    "version": "1.0.0"
+  },
+  "config": {
+    "key": "value"
+  },
+  "secret": {
+    "secret": "value"
+  },
+  "hpa": {
+    "enabled": true,
+    "maxReplicas": 3,
+    "minReplicas": 1,
+    "targetCPUUtilizationPercentage": 70
+  },
+  "ports": {
+    "service": 8080,
+    "containerPort": 8080
+  },
+  "ingress": {
+    "enabled": true,
+    "host": "mca3-templates-dev.cloudintercorpretail.pe"
+  },
+  "readiness": {
+    "httpGet": {
+      "host": "0.0.0.0", 
+      "port": "8080", 
+      "path": "/health"
+    },
+    "initialDelaySeconds": 3, 
+    "periodSeconds": 15, 
+    "timeoutSeconds": 5
+  },
+  "liveness": {
+    "httpGet": {
+      "host": "0.0.0.0", 
+      "port": "8080", 
+      "path": "/health"
+    },
+    "initialDelaySeconds": 3, 
+    "periodSeconds": 15, 
+    "timeoutSeconds": 5
+  },
+  "resourceLimits": {
+    "cpu": "2000m", 
+    "memory": "256Mi"
+  },
+  "resourceRequests": {
+    "cpu": "200m", 
+    "memory": "128Mi"
+  }
+}

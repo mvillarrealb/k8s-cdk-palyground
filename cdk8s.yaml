@@ -1,0 +1,4 @@
+language: typescript
+app: node api.js
+imports:
+  - k8s
