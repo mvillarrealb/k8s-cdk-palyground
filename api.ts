@@ -5,9 +5,14 @@ import { readFile } from 'fs';
 import { promisify } from 'util';
 import * as path from 'path';
 
+interface ServiceConfig {
+  annotations: { [key: string]: string }
+}
+
 interface IngressConfig {
   enabled: boolean;
   host: string;
+  annotations: { [key: string]: string }
 }
 
 interface HPAConfig {
@@ -25,6 +30,7 @@ interface PortConfig {
 interface Application {
   name: string,
   image: string,
+  service: ServiceConfig;
   labels?: { [key: string]: string },
   hpa: HPAConfig,
   ports: PortConfig,
@@ -41,7 +47,7 @@ class ContainerizedApi extends Chart {
   constructor(scope: Construct, application: Application) {
     super(scope, application.name);
     const { requests, limits } = application.resourceLimits;
-    const { name, image, labels, hpa, ingress, ports, readiness, liveness, config, secret } = application;
+    const { name, image, labels, hpa, ingress, ports, readiness, liveness, config, secret, service } = application;
     
     const label = { app: application.name };
     const allLabels = Object.assign(label, labels);
@@ -60,9 +66,10 @@ class ContainerizedApi extends Chart {
       data: secret
     })
 
-    const service = new Service(this, `service`, {
+    const appService = new Service(this, `service`, {
       metadata: {
-        labels: allLabels
+        labels: allLabels,
+        annotations: service.annotations
       },
       spec: {
         type: 'ClusterIp',
@@ -82,7 +89,7 @@ class ContainerizedApi extends Chart {
                 {
                   path: '/',
                   backend: {
-                    serviceName: service.name,
+                    serviceName: appService.name,
                     servicePort: ports.servicePort
                   },
                 }
@@ -92,19 +99,14 @@ class ContainerizedApi extends Chart {
         },
         metadata: {
           labels: allLabels,
-          annotations: {
-            'cert-manager.io/cluster-issuer': 'letsencrypt-prod',
-            'kubernetes.io/ingress.class': 'nginx'
-          }
+          annotations: ingress.annotations
         }
       });
     }
 
 
-    const deployment = new Deployment(this, `deployment`, {
-      metadata: {
-        labels: allLabels
-      },
+    const appDeployment = new Deployment(this, `deployment`, {
+      metadata: { labels: allLabels },
       spec: {
         replicas: 1,
         selector: {
@@ -146,7 +148,7 @@ class ContainerizedApi extends Chart {
           maxReplicas,
           minReplicas,
           targetCPUUtilizationPercentage,
-          scaleTargetRef: {kind: deployment.kind, name: deployment.name}
+          scaleTargetRef: {kind: appDeployment.kind, name: appDeployment.name}
         }
       });
     }
